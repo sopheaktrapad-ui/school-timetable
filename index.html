@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>កាលវិភាគសាលារៀន - Smart Timetable System</title>
+  <!-- Tailwind CSS & Google Fonts Khmer -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@300;400;500;600;700&family=Moul&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sheetjs-style@0.15.8/dist/xlsx.bundle.js"></script>
+
+  <style>
+    body {
+      font-family: 'Kantumruy Pro', sans-serif;
+      background-color: #f8fafc;
+    }
+    .font-moul {
+      font-family: 'Moul', cursive;
+    }
+    /* ទម្រង់បោះពុម្ព Print PDF A4 / A3 */
+    @media print {
+      @page {
+        size: A3 landscape;
+        margin: 8mm;
+      }
+      body {
+        background-color: white !important;
+        color: black !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+      .print-area {
+        display: block !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+      }
+      table {
+        border-collapse: collapse !important;
+        width: 100% !important;
+      }
+      th, td {
+        border: 1px solid #1e293b !important;
+      }
+    }
+  </style>
+</head>
+<body class="flex h-screen overflow-hidden text-slate-800">
+
+  <!-- ==================== SIDEBAR ==================== -->
+  <aside class="w-64 bg-white border-r border-slate-200 flex flex-col justify-between flex-shrink-0 no-print select-none shadow-sm">
+    <div>
+      <!-- School Info Header -->
+      <div class="p-5 border-b border-slate-100">
+        <h1 class="text-lg font-bold text-indigo-900 tracking-tight" id="sidebar-school-name">កាលវិភាគសាលារៀន</h1>
+        <p class="text-xs text-slate-500 mt-1" id="sidebar-academic-year">ឆ្នាំសិក្សា ២០២៤-២០២៥</p>
+        <span class="inline-block mt-2 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <i class="fa-solid fa-circle-check text-[10px] mr-1"></i> ប្រព័ន្ធដំណើរការ
+        </span>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="p-3 space-y-1 text-sm font-medium">
+        <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-indigo-700 bg-indigo-50 transition-colors">
+          <i class="fa-solid fa-table-cells-large w-5 text-indigo-600"></i> ផ្ទាំងដើម
+        </button>
+        <button onclick="switchTab('subjects')" id="nav-subjects" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
+          <i class="fa-solid fa-book-open w-5 text-slate-400"></i> មុខវិជ្ជា
+        </button>
+        <button onclick="switchTab('teachers')" id="nav-teachers" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
+          <i class="fa-solid fa-user-tie w-5 text-slate-400"></i> គ្រូបង្រៀន
+        </button>
+        <button onclick="switchTab('classes')" id="nav-classes" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
+          <i class="fa-solid fa-graduation-cap w-5 text-slate-400"></i> ថ្នាក់រៀន
+        </button>
+        <button onclick="switchTab('timetable')" id="nav-timetable" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
+          <i class="fa-solid fa-calendar-days w-5 text-slate-400"></i> កាលវិភាគ
+        </button>
+        <button onclick="switchTab('print')" id="nav-print" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-100 transition-colors">
+          <i class="fa-solid fa-print w-5 text-slate-400"></i> បោះពុម្ព
+        </button>
+      </nav>
+    </div>
+
+    <!-- Telegram & Sync Status -->
+    <div class="p-4 border-t border-slate-100">
+      <button onclick="syncDataFromCloud()" id="btn-sync" class="w-full flex items-center justify-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-all mb-2">
+        <i class="fa-solid fa-arrows-rotate" id="sync-icon"></i> ធ្វើបច្ចុប្បន្នភាពទិន្នន័យ
+      </button>
+      <a href="https://t.me/" target="_blank" class="w-full flex items-center justify-center gap-2 px-3 py-2 bg-sky-500 hover:bg-sky-600 text-white text-xs font-semibold rounded-lg transition-all shadow-sm">
+        <i class="fa-brands fa-telegram"></i> ក្រុមជំនួយ Telegram
+      </a>
+    </div>
+  </aside>
+
+  <!-- ==================== MAIN CONTENT ==================== -->
+  <main class="flex-1 flex flex-col overflow-y-auto bg-slate-50">
+    
+    <!-- Top Action Bar -->
+    <header class="bg-white border-b border-slate-200 px-8 py-4 flex items-center justify-between no-print">
+      <h2 id="top-title" class="text-xl font-bold text-slate-800">ផ្ទាំងគ្រប់គ្រងទូទៅ</h2>
+      <div class="flex items-center gap-3">
+        <span id="load-status" class="text-xs text-slate-500 flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-emerald-500"></span> បានភ្ជាប់ API
+        </span>
+      </div>
+    </header>
+
+    <!-- CONTENT CONTAINER -->
+    <div class="p-8 flex-1">
+
+      <!-- TAB 1: DASHBOARD -->
+      <section id="tab-dashboard" class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-5">
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <div class="text-slate-400 text-xs font-medium uppercase tracking-wider">គ្រូបង្រៀនសរុប</div>
+            <div class="text-3xl font-bold text-indigo-600 mt-2" id="stat-teachers">0</div>
+          </div>
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <div class="text-slate-400 text-xs font-medium uppercase tracking-wider">ថ្នាក់រៀនសរុប</div>
+            <div class="text-3xl font-bold text-sky-600 mt-2" id="stat-classes">0</div>
+          </div>
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <div class="text-slate-400 text-xs font-medium uppercase tracking-wider">មុខវិជ្ជាសរុប</div>
+            <div class="text-3xl font-bold text-emerald-600 mt-2" id="stat-subjects">0</div>
+          </div>
+          <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+            <div class="text-slate-400 text-xs font-medium uppercase tracking-wider">ម៉ោងរៀបចំរួច</div>
+            <div class="text-3xl font-bold text-amber-600 mt-2" id="stat-schedules">0</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+          <h3 class="font-bold text-base text-slate-800 mb-3">សេចក្តីណែនាំអំពីរបៀបប្រើប្រាស់</h3>
+          <ol class="list-decimal list-inside space-y-2 text-sm text-slate-600">
+            <li>ទិន្នន័យទាំងអស់ត្រូវបានភ្ជាប់ស្វ័យប្រវត្តិចេញពី **Google Sheets** តាមរយៈ Apps Script API។</li>
+            <li>ពិនិត្យមើលបញ្ជីមុខវិជ្ជា គ្រូបង្រៀន និងថ្នាក់រៀននៅក្នុង Menu នីមួយៗនៅខាងឆ្វេង។</li>
+            <li>ចូលទៅកាន់ **«កាលវិភាគ»** ដើម្បីពិនិត្យ ឬដំណើរកា Solver រៀបចំម៉ោងបង្រៀន។</li>
+            <li>ចូលទៅកាន់ **«បោះពុម្ព»** ដើម្បីទាញយកជា PDF ទម្រង់ A4/A3 ឬទាញយកជា Excel ផ្លូវការ។</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- TAB 2: TIMETABLE VIEW -->
+      <section id="tab-timetable" class="hidden space-y-6">
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div class="flex items-center gap-4">
+            <label class="text-sm font-semibold text-slate-700">ជ្រើសរើសថ្នាក់រៀន៖</label>
+            <select id="select-class-filter" onchange="renderTimetableTable()" class="border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="ALL">-- បង្ហាញគ្រប់ថ្នាក់ (តារាងរួម) --</option>
+            </select>
+          </div>
+          <button onclick="switchTab('print')" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold flex items-center gap-2 shadow-sm transition-all">
+            <i class="fa-solid fa-print"></i> ទៅកាន់ផ្ទាំងបោះពុម្ព
+          </button>
+        </div>
+
+        <!-- Timetable Render Container -->
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+          <div id="timetable-display-area"></div>
+        </div>
+      </section>
+
+      <!-- TAB 3: PRINT VIEW -->
+      <section id="tab-print" class="hidden space-y-6 print-area">
+        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between no-print">
+          <div class="text-sm font-semibold text-slate-700">
+            ផ្ទាំងមើលទម្រង់បោះពុម្ព (Print Preview - A4/A3)
+          </div>
+          <div class="flex items-center gap-3">
+            <button onclick="exportToExcel()" class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all">
+              <i class="fa-solid fa-file-excel text-emerald-600"></i> ទាញយក Excel
+            </button>
+            <button onclick="window.print()" class="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-sm font-semibold flex items-center gap-2 shadow-sm transition-all">
+              <i class="fa-solid fa-print"></i> បោះពុម្ពជា PDF
+            </button>
+          </div>
+        </div>
+
+        <!-- Printable Document Canvas -->
+        <div class="bg-white p-8 rounded-xl border border-slate-200 shadow-sm min-h-[500px]">
+          <!-- Official Letterhead Header -->
+          <div class="flex justify-between items-start mb-6">
+            <div class="text-center font-semibold text-slate-800 text-xs leading-relaxed">
+              <p>ការិយាល័យអប់រំ យុវជន និងកីឡា</p>
+              <p class="font-bold text-sm" id="print-school-name">វិទ្យាល័យ ហ៊ុន សែន មិត្តភាព</p>
+            </div>
+            <div class="text-center text-xs font-semibold leading-relaxed">
+              <p class="font-moul text-sm text-slate-900 tracking-wider">ព្រះរាជាណាចក្រកម្ពុជា</p>
+              <p class="font-moul text-xs text-slate-800">ជាតិ សាសនា ព្រះមហាក្សត្រ</p>
+              <div class="text-center text-xs mt-1">🙠 🙤 🙠 🙤</div>
+            </div>
+          </div>
+
+          <div class="text-center my-4">
+            <h2 class="font-bold text-base text-slate-900" id="print-title">កាលវិភាគបង្រៀនប្រចាំសប្តាហ៍</h2>
+            <p class="text-xs text-slate-600 mt-1" id="print-sub-academic-year">ឆ្នាំសិក្សា ២០២៤-២០២៥</p>
+          </div>
+
+          <!-- Print Table Content -->
+          <div id="print-table-container" class="mt-4 overflow-x-auto"></div>
+
+          <!-- Signature Footer -->
+          <div class="flex justify-between items-end mt-12 px-8 text-xs font-medium text-slate-800">
+            <div>
+              <p>បានឃើញ និងឯកភាព</p>
+              <p class="font-bold mt-1" id="print-principal-role">នាយកសាលា</p>
+              <div class="h-16"></div>
+              <p class="font-bold" id="print-principal-name">លោក គង់ សារិទ្ធ</p>
+            </div>
+            <div class="text-right">
+              <p>ថ្ងៃ...............ខែ...........ឆ្នាំ............... ព.ស. ២៥៦...</p>
+              <p class="mt-1">អ្នករៀបចំកាលវិភាគ</p>
+              <div class="h-16"></div>
+              <p class="font-bold">គណៈកម្មការកាលវិភាគ</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TAB 4: PLACEHOLDERS (SUBJECTS, TEACHERS, CLASSES) -->
+      <section id="tab-data-view" class="hidden">
+        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm overflow-x-auto">
+          <h3 id="data-view-title" class="font-bold text-base text-slate-800 mb-4"></h3>
+          <div id="data-table-container"></div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- ==================== JAVASCRIPT ==================== -->
+  <script>
+    // ដាក់ URL Web App API ដែលបាន Deploy លើ Apps Script ចូលត្រង់នេះ
+    const API_URL = "Yhttps://script.google.com/macros/s/AKfycbzbm8KiHEQRNdk9uN3gdG8vBP8A_on3jJ9-Z4WJtKbhAZUgdTitUJhXWM1u36dvN0uIcw/exec";
+
+    // Global Memory Cache
+    let APP_DATA = {
+      config: {},
+      subjects: [],
+      teachers: [],
+      unavailability: [],
+      classes: [],
+      assignments: [],
+      schedules: []
+    };
+
+    const DAYS = ["ចន្ទ", "អង្គារ", "ពុធ", "ព្រហស្បតិ៍", "សុក្រ", "សៅរ៍"];
+    const PERIODS = [
+      { id: 1, name: "ម៉ោង ១", session: "ព្រឹក" },
+      { id: 2, name: "ម៉ោង ២", session: "ព្រឹក" },
+      { id: 3, name: "ម៉ោង ៣", session: "ព្រឹក" },
+      { id: 4, name: "ម៉ោង ៤", session: "ព្រឹក" },
+      { id: 5, name: "ម៉ោង ៥", session: "ព្រឹក" },
+      { id: 6, name: "ម៉ោង ១", session: "រសៀល" },
+      { id: 7, name: "ម៉ោង ២", session: "រសៀល" },
+      { id: 8, name: "ម៉ោង ៣", session: "រសៀល" },
+      { id: 9, name: "ម៉ោង ៤", session: "រសៀល" }
+    ];
+
+    // Initialize System
+    window.addEventListener("DOMContentLoaded", () => {
+      syncDataFromCloud();
+    });
+
+    // Navigation Switcher
+    function switchTab(tabId) {
+      const tabs = ['dashboard', 'subjects', 'teachers', 'classes', 'timetable', 'print', 'data-view'];
+      tabs.forEach(t => {
+        const el = document.getElementById(`tab-${t}`);
+        if (el) el.classList.add('hidden');
+      });
+
+      // Update Nav active style
+      document.querySelectorAll('.nav-item').forEach(btn => {
+        btn.classList.remove('text-indigo-700', 'bg-indigo-50');
+        btn.classList.add('text-slate-600');
+      });
+
+      const activeBtn = document.getElementById(`nav-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.add('text-indigo-700', 'bg-indigo-50');
+        activeBtn.classList.remove('text-slate-600');
+      }
+
+      const activeSection = document.getElementById(`tab-${tabId}`);
+      if (activeSection) {
+        activeSection.classList.remove('hidden');
+      }
+
+      // Handle Specific Data Tabs
+      if (tabId === 'subjects') showSimpleDataView('បញ្ជីមុខវិជ្ជា', APP_DATA.subjects, ['subject_id', 'subject_name', 'short_code', 'color_code']);
+      if (tabId === 'teachers') showSimpleDataView('បញ្ជីគ្រូបង្រៀន', APP_DATA.teachers, ['teacher_id', 'teacher_name', 'gender', 'phone', 'specialty', 'max_hours_per_week']);
+      if (tabId === 'classes') showSimpleDataView('បញ្ជីថ្នាក់រៀន', APP_DATA.classes, ['class_id', 'grade_level', 'class_name', 'room', 'homeroom_teacher_id']);
+      if (tabId === 'timetable') renderTimetableTable();
+      if (tabId === 'print') renderPrintPreview();
+    }
+
+    // Fetch Data from Google Sheets API
+    async function syncDataFromCloud() {
+      const syncIcon = document.getElementById('sync-icon');
+      const loadStatus = document.getElementById('load-status');
+      syncIcon.classList.add('fa-spin');
+      loadStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span> កំពុងទាញទិន្នន័យ...`;
+
+      try {
+        const response = await fetch(`${API_URL}?action=getAllData`);
+        const res = await response.json();
+
+        if (res.status === "success") {
+          APP_DATA = res;
+          updateDashboard();
+          populateClassFilter();
+          loadStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-emerald-500"></span> បានភ្ជាប់ទិន្នន័យជោគជ័យ`;
+        } else {
+          throw new Error(res.message);
+        }
+      } catch (err) {
+        console.error("API Fetch Error:", err);
+        loadStatus.innerHTML = `<span class="w-2 h-2 rounded-full bg-rose-500"></span> បរាជ័យក្នុងការភ្ជាប់ API`;
+      } finally {
+        syncIcon.classList.remove('fa-spin');
+      }
+    }
+
+    // Update UI Stats
+    function updateDashboard() {
+      const c = APP_DATA.config || {};
+      if (c.school_name) {
+        document.getElementById('sidebar-school-name').innerText = c.school_name;
+        document.getElementById('print-school-name').innerText = c.school_name;
+      }
+      if (c.academic_year) {
+        document.getElementById('sidebar-academic-year').innerText = `ឆ្នាំសិក្សា ${c.academic_year}`;
+        document.getElementById('print-sub-academic-year').innerText = `ឆ្នាំសិក្សា ${c.academic_year}`;
+      }
+      if (c.principal_name) {
+        document.getElementById('print-principal-name').innerText = c.principal_name;
+      }
+
+      document.getElementById('stat-teachers').innerText = APP_DATA.teachers.length;
+      document.getElementById('stat-classes').innerText = APP_DATA.classes.length;
+      document.getElementById('stat-subjects').innerText = APP_DATA.subjects.length;
+      document.getElementById('stat-schedules').innerText = APP_DATA.schedules.length;
+    }
+
+    function populateClassFilter() {
+      const select = document.getElementById('select-class-filter');
+      select.innerHTML = `<option value="ALL">-- បង្ហាញគ្រប់ថ្នាក់ (តារាងរួម) --</option>`;
+      APP_DATA.classes.forEach(c => {
+        select.innerHTML += `<option value="${c.class_id}">${c.class_name}</option>`;
+      });
+    }
+
+    // Render Data View (Subjects, Teachers, Classes)
+    function showSimpleDataView(title, data, columns) {
+      document.getElementById('tab-data-view').classList.remove('hidden');
+      document.getElementById('data-view-title').innerText = title;
+      const container = document.getElementById('data-table-container');
+
+      if (!data || data.length === 0) {
+        container.innerHTML = `<p class="text-sm text-slate-500">គ្មានទិន្នន័យឡើយ</p>`;
+        return;
+      }
+
+      let html = `<table class="w-full text-left text-xs border-collapse"><thead><tr class="bg-slate-100 text-slate-700">`;
+      columns.forEach(col => html += `<th class="p-3 border border-slate-200 uppercase">${col}</th>`);
+      html += `</tr></thead><tbody>`;
+
+      data.forEach(row => {
+        html += `<tr class="hover:bg-slate-50 border-b border-slate-200">`;
+        columns.forEach(col => {
+          let val = row[col] || '-';
+          if (col === 'color_code') {
+            val = `<span class="inline-flex items-center gap-1.5"><span class="w-3 h-3 rounded-full" style="background-color:${val}"></span>${val}</span>`;
+          }
+          html += `<td class="p-3 border border-slate-200">${val}</td>`;
+        });
+        html += `</tr>`;
+      });
+      html += `</tbody></table>`;
+      container.innerHTML = html;
+    }
+
+    // Render Timetable Grid
+    function renderTimetableTable() {
+      const filter = document.getElementById('select-class-filter').value;
+      const area = document.getElementById('timetable-display-area');
+      area.innerHTML = buildTimetableHtml(filter);
+    }
+
+    function renderPrintPreview() {
+      const filter = document.getElementById('select-class-filter').value;
+      const container = document.getElementById('print-table-container');
+      container.innerHTML = buildTimetableHtml(filter, true);
+    }
+
+    // Helper: Build Full Timetable HTML Grid
+    function buildTimetableHtml(classFilter = "ALL", isForPrint = false) {
+      const subjectsMap = Object.fromEntries(APP_DATA.subjects.map(s => [s.subject_id, s]));
+      const teachersMap = Object.fromEntries(APP_DATA.teachers.map(t => [t.teacher_id, t]));
+
+      const targetClasses = (classFilter === "ALL") 
+        ? APP_DATA.classes 
+        : APP_DATA.classes.filter(c => c.class_id === classFilter);
+
+      if (targetClasses.length === 0) {
+        return `<p class="text-center text-sm text-slate-500 py-6">រកមិនឃើញទិន្នន័យថ្នាក់រៀន</p>`;
+      }
+
+      let html = `
+        <table class="w-full text-center border-collapse text-xs border border-slate-300">
+          <thead>
+            <tr class="bg-indigo-900 text-white font-bold">
+              <th class="p-2 border border-slate-400 w-20" rowspan="2">ថ្នាក់</th>
+              <th class="p-2 border border-slate-400 w-24" rowspan="2">បន្ទប់</th>
+              ${DAYS.map(day => `<th class="p-2 border border-slate-400" colspan="5">${day}</th>`).join('')}
+            </tr>
+            <tr class="bg-indigo-800 text-white font-semibold text-[11px]">
+              ${DAYS.map(() => `
+                <th class="p-1 border border-slate-400">១</th>
+                <th class="p-1 border border-slate-400">២</th>
+                <th class="p-1 border border-slate-400">៣</th>
+                <th class="p-1 border border-slate-400">៤</th>
+                <th class="p-1 border border-slate-400">៥</th>
+              `).join('')}
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      targetClasses.forEach(cls => {
+        html += `<tr class="border-b border-slate-300 hover:bg-slate-50">
+          <td class="p-2 font-bold bg-slate-100 border border-slate-300">${cls.class_name}</td>
+          <td class="p-2 border border-slate-300 text-slate-600">${cls.room || '-'}</td>
+        `;
+
+        DAYS.forEach(day => {
+          for (let p = 1; p <= 5; p++) {
+            const periodStr = `ម៉ោង ${p}`;
+            const slot = APP_DATA.schedules.find(s => 
+              s.class_id === cls.class_id && 
+              s.day_of_week === day && 
+              s.period === periodStr
+            );
+
+            if (slot) {
+              const sub = subjectsMap[slot.subject_id] || { short_code: slot.subject_id, color_code: '#4B5563' };
+              const teacher = teachersMap[slot.teacher_id] || { teacher_name: '' };
+              
+              html += `
+                <td class="p-1 border border-slate-300 text-center font-medium" style="background-color: ${sub.color_code}15;">
+                  <span class="block font-bold" style="color: ${sub.color_code};">${sub.short_code}</span>
+                  <span class="block text-[10px] text-slate-500">${teacher.teacher_name || ''}</span>
+                </td>
+              `;
+            } else {
+              html += `<td class="p-1 border border-slate-200 text-slate-300">-</td>`;
+            }
+          }
+        });
+
+        html += `</tr>`;
+      });
+
+      html += `</tbody></table>`;
+      return html;
+    }
+
+    // Export Table as Real Excel Sheet
+    function exportToExcel() {
+      const table = document.getElementById("print-table-container").querySelector("table");
+      if (!table) {
+        alert("មិនមានទិន្នន័យដើម្បី Export ឡើយ!");
+        return;
+      }
+      const wb = XLSX.utils.table_to_book(table, { sheet: "Timetable" });
+      XLSX.writeFile(wb, "Timetable_Schedule.xlsx");
+    }
+  </script>
+</body>
+</html>
